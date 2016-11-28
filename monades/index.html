@@ -1,0 +1,481 @@
+---
+layout: article
+maintitle: Comprendre les monades
+subtitle: C’est quoi ? À quoi ça sert ?
+navtitle: Comprendre les monades
+auteur: Dominus Carnufex
+pubdate: "11&nbsp;juillet&nbsp;2016"
+licence: BiPu-L
+---
+
+<p>Les monades, ça fait peur. On en entend généralement parler quand on se lance dans l’étude du Haskell, dont elles sont souvent présentées comme la principale difficulté, voire de la programmation fonctionnelle de manière générale. Pourtant, si l’on se restreint à l’essentiel, à savoir ce que c’est, et quelle est leur utilité, c’est vraiment tout bête.</p>
+<p>Alors voilà l’objectif que se fixe ce cours&nbsp;: faire comprendre simplement ce que sont les monades, et guère plus. On n’expliquera pas comment créer une monade dans les formes, on ne parlera pas des lois des monades, <em>a fortiori</em> des mathématiques derrière les monades, on ne parlera pas non plus des usages avancés des monades, comme les transformateurs de monades ou les monades additives.</p>
+<p>Juste l’essentiel, l’indispensable. Qu’est-ce que c’est. Quelques exemples de cas où elles sont utiles. Quelques exemples de cas où elles <em>ne sont pas</em> utiles. Le reste sera traité dans d’autres cours.</p>
+<p>Tous les codes sont expliqués&nbsp;: il n’est donc pas nécessaire de connaître le Haskell pour comprendre ce cours. Malgré tout, en connaître les principales syntaxes aide grandement. La troisième section montre des exemples de monades dans d’autres langages que le Haskell, mais le code est là aussi expliqué, et ne nécessite pas de connaître le langage employé.</p>
+<p>En revanche, le cours considère comme acquis les concepts usuels de la programmation (fonction, variable, etc.) et sera difficilement<a class="footnote-reference" href="#id20" id="id1"><sup>1</sup></a> accessible à quelqu’un qui n’aurait aucune pratique de celle-ci.</p>
+<aside class="note">
+<p class="first admonition-title"></p>
+<p><strong>Prérequis</strong> <br />
+Vocabulaire usuel de la programmation. <br />
+Avoir déjà résolu des problèmes concrets au moyen d’un programme.</p>
+<p><strong>Prérequis optionnel</strong> <br />
+Niveau moyen en <a class="reference external" href="http://lyah.haskell.fr">Haskell</a>.</p>
+<p><strong>Objectifs</strong> <br />
+Comprendre ce qu’est une monade. <br />
+Savoir reconnaître une monade quand on en voit une. <br />
+Savoir dans les grandes lignes quand utiliser une monade.</p>
+<p class="last"><strong>Aspects non traités</strong> <br />
+La classe de type <code>Monad</code> en Haskell. <br />
+Les lois des monades. <br />
+Les monades additives et les transformateurs des monades. <br />
+Les limites des monades et comment les dépasser. <br />
+Les mathématiques derrière les monades.</p>
+</aside>
+<nav class="contents topic" id="sommaire">
+<p class="topic-title first">Sommaire</p>
+<ul class="simple">
+<li><a class="reference internal" href="#definition-et-exemples" id="id31">Définition et exemples</a></li>
+<li><a class="reference internal" href="#utilite" id="id32">Utilité</a></li>
+<li><a class="reference internal" href="#un-outil-multi-langages" id="id33">Un outil multi-langages</a></li>
+<li><a class="reference internal" href="#necessite" id="id34">Nécessité&nbsp;?</a></li>
+</ul>
+</nav>
+<h1 id="definition-et-exemples">Définition et exemples</h1>
+<aside class="question">
+<p class="first admonition-title"></p>
+<p class="last">Une monade, <em>qu’es acò</em>&nbsp;?</p>
+</aside>
+<p>Une monade, c’est une boite, pouvant contenir un ou plusieurs objets de même nature, conçue de telle manière que l’on puisse placer un/des objet(s) dans la boite, et par ailleurs, sortir le contenu de la boite juste le temps d’effectuer une action sur lui, avant de le remettre dans la boite.</p>
+<p>Notez bien que les objets sont de même nature <em>à un instant donné</em>&nbsp;: l’action effectuée sur les objets peut en changer la nature, du moment qu’elle change la nature de <em>tous</em> les objets. Pour prendre une comparaison concrète, on peut sortir des sacs de grain et remettre des sacs de farine.</p>
+<p>Voilà pour l’approche intuitive. De manière un peu plus concrète, et avec du vocabulaire plus formel, une abstraction informatique peut être considérée comme une monade si elle réunit les éléments suivants.</p>
+<ul class="simple">
+<li>Un type qui permet d’encapsuler un ou plusieurs objets <strong>de même type</strong>, c’est-à-dire un type paramétré<a class="footnote-reference" href="#id21" id="id3"><sup>2</sup></a>. C’est le terme en usage en Haskell ou en OCaml, mais d’autres langages utilisent des noms différents&nbsp;: en Rust, on parlera des génériques, en C++, d’une <em>template class</em>, etc. Notez bien que la définition n’autorise que les types à un seul paramètre.</li>
+<li>Une fonction qui prend un objet de tout type (avec éventuellement certaines limites) et l’encapsule dans le type précité<a class="footnote-reference" href="#id22" id="id4"><sup>3</sup></a>, créant ainsi une <strong>valeur monadique</strong><a class="footnote-reference" href="#id23" id="id5"><sup>4</sup></a>. Selon les langages, elle est appelée <code>return</code>, <code>unit</code> ou encore <code>lift</code>.</li>
+<li>Une fonction qui prend en paramètres une valeur monadique (c’est-à-dire un objet du type utilisé par la monade contenant un ou plusieurs objets) et une autre fonction — laquelle prend en paramètre un objet du type encapsulé et renvoie une nouvelle valeur monadique — puis applique ladite fonction à la valeur encapsulée dans le premier paramètre<a class="footnote-reference" href="#id24" id="id6"><sup>5</sup></a><a class="footnote-reference" href="#id25" id="id7"><sup>6</sup></a>. C’est un peu aride, dit comme cela, mais un exemple viendra vite éclairer les choses. Cette fonction est habituellement appelée <code>bind</code>.</li>
+</ul>
+<p>Prenons le Haskell comme langage de travail, et essayons de créer la plus simple des monades. Il nous faut d’abord un type paramétré. Comme on veut créer la plus simple de toutes les monades, ce type paramétré ne pourra contenir qu’un seul objet.</p>
+<pre class="code haskell literal-block">
+<span class="keyword reserved">data</span> <span class="keyword type">MonType</span> <span class="name">a</span> <span class="operator word">=</span> <span class="keyword type">MonConstructeur</span> <span class="name">a</span>
+</pre>
+<p>Pour ceux qui ne seraient pas familiers avec le langage, le mot-clé <code>data</code> signifie que l’on va définir un nouveau type. <code>MonType</code> est le nom du type, et le <code>a</code> signale que c’est un type paramétré à un seul paramètre. Ce qui vient après le <code>=</code> est un constructeur de valeur, là aussi à un seul paramètre&nbsp;: on lui fournit une valeur de n’importe quel type, et il l’emballe pour en faire un objet de type <code>MonType</code>.</p>
+<p>Passons à la fonction <code>return</code>. <em>Stricto sensu</em>, le constructeur de valeur dont nous venons de parler fait déjà le travail, mais on va la définir quand même, juste pour être complets.</p>
+<pre class="code haskell literal-block">
+<span class="name function">return</span> <span class="operator word">::</span> <span class="name">a</span> <span class="operator word">-&gt;</span> <span class="keyword type">MonType</span> <span class="name">a</span>
+<span class="name function">return</span> <span class="name">x</span> <span class="operator word">=</span> <span class="keyword type">MonConstructeur</span> <span class="name">x</span>
+</pre>
+<p>La première ligne n’est pas entièrement nécessaire, elle se contente de dire que <code>return</code> prend un objet de n’importe quel type, et renvoie une valeur monadique de type <code>MonType</code> contenant ce même type. La seconde ligne dit strictement ce que nous avons fait remarquer trois lignes plus haut&nbsp;: <code>return</code> est parfaitement équivalent au constructeur de valeur.</p>
+<p>Vient la partie la plus complexe, à savoir <code>bind</code>. En voici le code.</p>
+<pre class="code haskell literal-block">
+<span class="name function">bind</span> <span class="operator word">::</span> <span class="keyword type">MonType</span> <span class="name">a</span> <span class="operator word">-&gt;</span> <span class="punctuation">(</span><span class="name">a</span> <span class="operator word">-&gt;</span> <span class="keyword type">MonType</span> <span class="name">b</span><span class="punctuation">)</span> <span class="operator word">-&gt;</span> <span class="keyword type">MonType</span> <span class="name">b</span>
+<span class="name function">bind</span> <span class="punctuation">(</span><span class="keyword type">MonConstructeur</span> <span class="name">objet</span><span class="punctuation">)</span> <span class="name">fonction</span> <span class="operator word">=</span> <span class="name">fonction</span> <span class="name">objet</span>
+</pre>
+<p>Là encore, la première ligne n’est pas totalement nécessaire. Elle fixe les mêmes conditions de type que données plus haut dans l’explication formelle. Quant à la seconde, elle est un tout petit peu plus complexe, alors voyons les choses pas à pas.</p>
+<p>La fonction <code>bind</code> prend deux paramètres, <code>(MonConstructeur objet)</code> et <code>fonction</code>. Le premier est rédigé de manière à utiliser le filtrage par motif, qui permet d’accéder de manière élégante à la valeur contenue dans l’emballage <code>MonType</code>. La partie après le <code>=</code> définit le fonctionnement de <code>bind</code>, à savoir simplement appliquer <code>fonction</code> au contenu de la valeur monadique.</p>
+<p>Son utilisation est alors très simple.</p>
+<pre class="code haskell literal-block">
+<span class="name function">multiplier_par_deux</span> <span class="operator word">::</span> <span class="keyword type">Int</span> <span class="operator word">-&gt;</span> <span class="keyword type">MonType</span> <span class="keyword type">Int</span>
+<span class="name function">multiplier_par_deux</span> <span class="name">x</span> <span class="operator word">=</span> <span class="name">return</span> <span class="punctuation">(</span><span class="name">x</span> <span class="operator">*</span> <span class="literal number integer">2</span><span class="punctuation">)</span>
+
+<span class="name function">valeur_monadique</span> <span class="operator word">=</span> <span class="name">return</span> <span class="literal number integer">4</span>
+<span class="name function">nouvelle_valeur_monadique</span> <span class="operator word">=</span> <span class="name">bind</span> <span class="name">valeur_monadique</span> <span class="name">multiplier_par_deux</span>
+</pre>
+<p>La fonction <code>nouvelle_valeur_monadique</code> renverra <code>8</code> encapsulé dans un objet de type <code>MonType</code>. Et voilà&nbsp;! Vous avez devant vous votre première monade. Moins effrayant qu’il n’y paraît, n’est-ce pas&nbsp;? Et parfaitement inutile, soyons honnêtes. Mais elle permet de mettre en lumière une vérité première sur les monades, qu’il faut toujours avoir à l’esprit quand on s’intéresse à elles.</p>
+<aside class="note">
+<p class="first admonition-title"></p>
+<p class="last">Une monade n’est pas un concept mystique, c’est un outil, plus ou moins utile selon les situations, et répondant à un cahier des charges précis.</p>
+</aside>
+<aside class="question">
+<p class="first admonition-title"></p>
+<p class="last">Le cahier des charges reste très abstrait.</p>
+</aside>
+<p>Alors voyons quelques exemples et contre-exemples, toujours en Haskell.</p>
+<p>Le type <code>Maybe</code> peut être défini comme suit, accompagné de ses fonctions <code>return</code> et <code>bind</code>.</p>
+<pre class="code haskell literal-block">
+<span class="keyword reserved">data</span> <span class="keyword type">Maybe</span> <span class="name">a</span> <span class="operator word">=</span> <span class="keyword type">Nothing</span> <span class="operator">|</span> <span class="keyword type">Just</span> <span class="name">a</span>
+
+<span class="name function">return</span> <span class="operator word">::</span> <span class="name">a</span> <span class="operator word">-&gt;</span> <span class="keyword type">Maybe</span> <span class="name">a</span>
+<span class="name function">return</span> <span class="name">x</span> <span class="operator word">=</span> <span class="keyword type">Just</span> <span class="name">x</span>
+
+<span class="name function">bind</span> <span class="operator word">::</span> <span class="keyword type">Maybe</span> <span class="name">a</span> <span class="operator word">-&gt;</span> <span class="punctuation">(</span><span class="name">a</span> <span class="operator word">-&gt;</span> <span class="keyword type">Maybe</span> <span class="name">b</span><span class="punctuation">)</span> <span class="operator word">-&gt;</span> <span class="keyword type">Maybe</span> <span class="name">b</span>
+<span class="name function">bind</span> <span class="punctuation">(</span><span class="keyword type">Just</span> <span class="name">a</span><span class="punctuation">)</span> <span class="name">f</span> <span class="operator word">=</span> <span class="name">f</span> <span class="name">a</span>
+<span class="name function">bind</span> <span class="keyword type">Nothing</span> <span class="keyword reserved">_</span> <span class="operator word">=</span> <span class="keyword type">Nothing</span>
+</pre>
+<p>La situation est très légèrement plus complexe, mais vous devriez reconnaître la structure générale. On commence par définir le type paramétré <code>Maybe</code>, qui peut prendre deux formes différentes&nbsp;: soit <code>Nothing</code>, qui n’encapsule rien, soit <code>Just</code> qui, lui, peut encapsuler n’importe quoi.</p>
+<p>Comme pour <code>MonType</code>, la fonction <code>return</code> est parfaitement équivalente au constructeur de valeur <code>Just</code>, puisque celui-ci se contente de prendre une valeur, et de l’emballer dans un objet de type <code>Maybe</code>.</p>
+<p>La fonction <code>bind</code> est plus nettement différente, mais vous remarquerez que la définition de son type suit strictement le même modèle que <code>MonType</code>. Que disent les deux lignes restantes&nbsp;? Que si la valeur monadique est <code>Nothing</code>, c’est-à-dire n’encapsule rien, alors on ne peut pas appliquer une fonction sur une valeur qui n’existe pas, et on se contente de renvoyer à nouveau <code>Nothing</code>. Si au contraire la valeur monadique a la forme <code>Just quelque_chose</code>, alors on applique la fonction sur ce quelque chose, comme prévu.</p>
+<p>Comme vous le voyez, le triplet <code>Maybe a</code>, <code>return</code>, <code>bind</code> respecte les conditions imposées, et constitue donc une monade. Quelle est son utilité&nbsp;? Elle sert à gérer les opérations qui peuvent échouer. Mais nous reviendrons plus tard là-dessus.</p>
+<p>Il existe un autre type dans la bibliothèque standard du Haskell, qui sert à gérer les opérations qui peuvent échouer, et il est défini comme suit.</p>
+<pre class="code haskell literal-block">
+<span class="keyword reserved">data</span> <span class="keyword type">Either</span> <span class="name">a</span> <span class="name">b</span> <span class="operator word">=</span> <span class="keyword type">Left</span> <span class="name">a</span> <span class="operator">|</span> <span class="keyword type">Right</span> <span class="name">b</span>
+</pre>
+<p>On voit d’emblée que ce type ne peut pas servir de base à une monade. En effet, il possède <em>deux</em> paramètres, et non un seul, ce qui le disqualifie d’office. Vous retiendrez donc que c’est la forme, et non l’utilité, qui fait la monade.</p>
+<p>On s’en convaincra en voyant cette autre monade, assez nettement différente de <code>Maybe</code>.</p>
+<pre class="code haskell literal-block">
+<span class="keyword reserved">data</span> <span class="keyword type">Liste</span> <span class="name">a</span> <span class="operator word">=</span> <span class="keyword type">ListeVide</span> <span class="operator">|</span> <span class="keyword type">ListePasVide</span> <span class="name">a</span> <span class="punctuation">(</span><span class="keyword type">Liste</span> <span class="name">a</span><span class="punctuation">)</span>
+<span class="comment single">-- ListePasVide encapsule le premier élément de la liste,</span>
+<span class="comment single">--   puis le reste de la liste d’un bloc.</span>
+
+<span class="name function">return</span> <span class="operator word">::</span> <span class="name">a</span> <span class="operator word">-&gt;</span> <span class="keyword type">Liste</span> <span class="name">a</span>
+<span class="name function">return</span> <span class="name">x</span> <span class="operator word">=</span> <span class="keyword type">ListePasVide</span> <span class="name">x</span> <span class="keyword type">ListeVide</span>
+<span class="comment single">-- Une liste à un seul élément contient donc un premier élément,</span>
+<span class="comment single">--   puis un «&nbsp;reste de la liste&nbsp;» qui est vide.</span>
+
+<span class="name function">bind</span> <span class="operator word">::</span> <span class="keyword type">Liste</span> <span class="name">a</span> <span class="operator word">-&gt;</span> <span class="punctuation">(</span><span class="name">a</span> <span class="operator word">-&gt;</span> <span class="keyword type">Liste</span> <span class="name">b</span><span class="punctuation">)</span> <span class="operator word">-&gt;</span> <span class="keyword type">Liste</span> <span class="name">b</span>
+<span class="name function">bind</span> <span class="keyword type">ListeVide</span> <span class="keyword reserved">_</span> <span class="operator word">=</span> <span class="keyword type">ListeVide</span>
+<span class="name function">bind</span> <span class="name">liste</span> <span class="name">f</span> <span class="operator word">=</span> <span class="name">concat</span> <span class="punctuation">(</span><span class="name">map</span> <span class="name">f</span> <span class="name">liste</span><span class="punctuation">)</span>
+</pre>
+<p>Il ne s’agit pas du vrai type de liste du Haskell, car celui-ci utilise une syntaxe trop particulière pour rester compréhensible, mais le principe est le même. On a un type à un seul paramètre, qui est cette fois récursif&nbsp;: il encapsule, outre une valeur, un autre objet du même type que lui. En pratique, cela revient à encapsuler plusieurs objets du même type.</p>
+<p>La fonction <code>return</code> se contente d’encapsuler la valeur fournie en entrée dans une liste dont elle est le seul élément. Quant à <code>bind</code> elle applique la fonction <code>f</code> sur chaque élément de la liste fournie en entrée, avant «&nbsp;d’écraser&nbsp;» les deux niveaux de liste en un seul. Cet exemple vous permettra d’y voir un peu plus clair.</p>
+<pre class="code haskell literal-block">
+<span class="name function">ma_fonction</span> <span class="operator word">::</span> <span class="keyword type">Int</span> <span class="operator word">-&gt;</span> <span class="punctuation">[</span><span class="keyword type">Int</span><span class="punctuation">]</span>
+<span class="name function">ma_fonction</span> <span class="name">x</span> <span class="operator word">=</span> <span class="punctuation">[</span><span class="name">x</span> <span class="operator">+</span> <span class="literal number integer">1</span><span class="punctuation">,</span> <span class="name">x</span> <span class="operator">+</span> <span class="literal number integer">10</span><span class="punctuation">]</span>
+<span class="comment single">-- ``ma_fonction`` prend un entier et renvoie une liste composée de&nbsp;:</span>
+<span class="comment single">--  — cet entier plus 1&nbsp;;</span>
+<span class="comment single">--  — cet entier plus 10.</span>
+
+<span class="name function">ma_liste</span> <span class="operator word">::</span> <span class="punctuation">[</span><span class="keyword type">Int</span><span class="punctuation">]</span>
+<span class="name function">ma_liste</span> <span class="operator word">=</span> <span class="punctuation">[</span><span class="literal number integer">0</span><span class="punctuation">,</span> <span class="literal number integer">12</span><span class="punctuation">,</span> <span class="literal number integer">54</span><span class="punctuation">]</span>
+<span class="comment single">-- Une simple liste d’entiers.</span>
+
+<span class="name function">bindons</span> <span class="operator word">::</span> <span class="punctuation">[</span><span class="keyword type">Int</span><span class="punctuation">]</span>
+<span class="name function">bindons</span> <span class="operator word">=</span> <span class="name">bind</span> <span class="name">ma_liste</span> <span class="name">ma_fonction</span>
+<span class="comment single">-- Donne pour résultat ``[1, 10, 13, 22, 55, 64]``. Comment en arrive-t-on là&nbsp;?</span>
+<span class="comment single">-- Pour commencer, ``map ma_fonction ma_liste`` applique ``ma_fonction`` à chaque élément</span>
+<span class="comment single">--   de ``ma_liste``. On obtient donc le résultat ``[[1, 10], [13, 22], [55, 64]]``.</span>
+<span class="comment single">-- Puis ``concat`` «&nbsp;écrase&nbsp;» les deux niveaux de liste en un seul, donnant le résultat</span>
+<span class="comment single">--   attendu. On a bien une liste d’entiers en entrée, et une liste d’entiers en sortie.</span>
+</pre>
+<p>Le détail du fonctionnement importe peu. Ce qu’il faut retenir, c’est que la fonction <code>bind</code> respecte strictement les conditions imposées par le cahier des charges, même s’il lui faut biaiser un peu pour cela, et cela suffit à faire une monade du type liste accompagné de ces deux fonctions.</p>
+<h1 id="utilite">Utilité</h1>
+<aside class="question">
+<p class="first admonition-title"></p>
+<p class="last">Les monades sont un outil, certes, mais à quoi sert cet outil&nbsp;?</p>
+</aside>
+<p>Il n’y a qu’une seule réponse possible à cette question&nbsp;: cela dépend de la monade. Nous avons vu dans la section précédente qu’une monade pouvait tout simplement ne servir à rien. Mais supposons que nous ne conservions que les «&nbsp;bonnes&nbsp;» monades, celles qui sont utiles au programmeur&nbsp;?</p>
+<p>L’utilité la plus évidente est de simplifier le code utilisant le type qui sert de base à la monade. Revenons à notre type <code>Maybe</code>&nbsp;: on peut l’utiliser pour écrire une fonction de division un peu plus propre que celle de départ. Comparez en effet ces deux fonctions.</p>
+<pre class="code haskell literal-block">
+<span class="name function">divMoche</span> <span class="operator word">::</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span>
+<span class="name function">divMoche</span> <span class="name">x</span> <span class="name">y</span> <span class="operator word">=</span> <span class="keyword reserved">if</span> <span class="name">y</span> <span class="operator">==</span> <span class="literal number integer">0</span>
+               <span class="keyword reserved">then</span> <span class="name exception">error</span> <span class="literal string">&quot;Division par 0 interdite&nbsp;!&quot;</span>
+               <span class="keyword reserved">else</span> <span class="name">x</span> <span class="operator">/</span> <span class="name">y</span>
+
+<span class="name function">divM</span> <span class="operator word">::</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Maybe</span> <span class="keyword type">Double</span>
+<span class="name function">divM</span> <span class="name">x</span> <span class="name">y</span> <span class="operator word">=</span> <span class="keyword reserved">if</span> <span class="name">y</span> <span class="operator">==</span> <span class="literal number integer">0</span> <span class="keyword reserved">then</span> <span class="keyword type">Nothing</span> <span class="keyword reserved">else</span> <span class="keyword type">Just</span> <span class="punctuation">(</span><span class="name">x</span> <span class="operator">/</span> <span class="name">y</span><span class="punctuation">)</span>
+</pre>
+<p>Voyez la très légère différence dans la déclaration de type de chaque fonction. À quoi cela a-t-il servi&nbsp;? La fonction <code>error</code> abandonne l’exécution du programme et affiche une erreur. Si votre programme a pour seule utilité de faire une division, ce n’est pas très grave, mais si votre calculette plantait définitivement chaque fois que vous cherchez à faire une opération n’ayant pas de sens, cela deviendrait vite pénible.</p>
+<p>Alors qu’avec <code>divM</code>, c’est le résultat lui-même qui signale qu’il y a eu une erreur. Supposons alors que nous voulions faire plusieurs divisions à la suite<a class="footnote-reference" href="#id26" id="id8"><sup>7</sup></a>. Il faut, à chaque division, vérifier que la précédente n’a pas abouti à une erreur. Cela donnerait le code qui suit, pour trois divisions successives.</p>
+<pre class="code haskell literal-block">
+<span class="name function">divM_3</span> <span class="operator word">::</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Maybe</span> <span class="keyword type">Double</span>
+<span class="name function">divM_3</span> <span class="name">x</span> <span class="name">y1</span> <span class="name">y2</span> <span class="name">y3</span> <span class="operator word">=</span>
+    <span class="keyword reserved">case</span> <span class="name">divM</span> <span class="name">x</span> <span class="name">y1</span> <span class="keyword reserved">of</span>
+        <span class="keyword type">Nothing</span> <span class="operator word">-&gt;</span> <span class="keyword type">Nothing</span>
+        <span class="keyword type">Just</span> <span class="name">x2</span> <span class="operator word">-&gt;</span> <span class="keyword reserved">case</span> <span class="name">divM</span> <span class="name">x2</span> <span class="name">y2</span> <span class="keyword reserved">of</span>
+            <span class="keyword type">Nothing</span> <span class="operator word">-&gt;</span> <span class="keyword type">Nothing</span>
+            <span class="keyword type">Just</span> <span class="name">x3</span> <span class="operator word">-&gt;</span> <span class="name">divM</span> <span class="name">x3</span> <span class="name">y3</span>
+</pre>
+<p>Pour ceux qui ne connaîtraient pas la syntaxe, <code>case &lt;qqch&gt; of</code> compare la valeur de <code>&lt;qqch&gt;</code> aux valeurs ou motifs situés avant les flèches, et exécute le traitement correspondant situé après la flèche. C’est une forme étendue de <code>if … then … else</code>. Et pour ajouter une nouvelle division, il faudrait ajouter encore un niveau d’imbrication. Cela n’est évidemment pas optimal, et c’est là qu’intervient la monade.</p>
+<p>Reprenons notre fonction <code>divM</code> de plus haut, ainsi que les fonctions <code>return</code> et <code>bind</code> que nous avions écrites dans la première section. Voici comment on pourrait écrire <code>divM_3</code>.</p>
+<pre class="code haskell literal-block">
+<span class="name function">divM_3</span> <span class="operator word">::</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Maybe</span> <span class="keyword type">Double</span>
+<span class="name function">divM_3</span> <span class="name">x</span> <span class="name">y1</span> <span class="name">y2</span> <span class="name">y3</span> <span class="operator word">=</span> <span class="name">return</span> <span class="name">x</span>
+                    <span class="punctuation">`</span><span class="name">bind</span><span class="punctuation">`</span> <span class="name function">\</span><span class="name">x1</span> <span class="operator word">-&gt;</span> <span class="name">divM</span> <span class="name">x1</span> <span class="name">y1</span>
+                    <span class="punctuation">`</span><span class="name">bind</span><span class="punctuation">`</span> <span class="name function">\</span><span class="name">x2</span> <span class="operator word">-&gt;</span> <span class="name">divM</span> <span class="name">x2</span> <span class="name">y2</span>
+                    <span class="punctuation">`</span><span class="name">bind</span><span class="punctuation">`</span> <span class="name function">\</span><span class="name">x3</span> <span class="operator word">-&gt;</span> <span class="name">divM</span> <span class="name">x3</span> <span class="name">y3</span>
+</pre>
+<p>Il y a quelques nouveaux éléments de syntaxe à expliciter. Le fait de mettre la fonction <code>bind</code> entre apostrophes inversées ` permet de placer son premier paramètre avant elle, et son second paramètre après, à la manière d’un opérateur (comme <code>+</code> ou <code>/</code>).</p>
+<p>En outre, la structure <code>\x1 -&gt; divM x1 y1</code> est une <strong>lambda</strong> ou <strong>fonction anonyme</strong>&nbsp;: elle prend un seul paramètre, <code>x1</code>, et renvoie ce qui se trouve après la flèche. Cela permet de créer à peu de frais des fonctions «&nbsp;diviser par y1&nbsp;», «&nbsp;diviser par y2&nbsp;», etc. Lesquelles ne prenant qu’un seul paramètre, peuvent être <code>bind</code>ées au résultat de l’opération précédente.</p>
+<p>Comme vous le voyez, une fois que l’on est habitué à la syntaxe, cette nouvelle version est beaucoup moins pénible à écrire, à comprendre, et à modifier si l’on veut y rajouter des divisions successives. Le Haskell<a class="footnote-reference" href="#id27" id="id9"><sup>8</sup></a> a même poussé les choses plus loin&nbsp;: lorsque la monade est définie selon certaines règles (que nous n’aborderons pas dans cette introduction), on peut écrire les choses ainsi.</p>
+<pre class="code haskell literal-block">
+<span class="name function">divM_3</span> <span class="operator word">::</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Double</span> <span class="operator word">-&gt;</span> <span class="keyword type">Maybe</span> <span class="keyword type">Double</span>
+<span class="name function">divM_3</span> <span class="name">x</span> <span class="name">y1</span> <span class="name">y2</span> <span class="name">y3</span> <span class="operator word">=</span> <span class="keyword reserved">do</span>
+    <span class="name">x1</span> <span class="operator word">&lt;-</span> <span class="name">return</span> <span class="name">x</span>
+    <span class="name">x2</span> <span class="operator word">&lt;-</span> <span class="name">divM</span> <span class="name">x1</span> <span class="name">y1</span>
+    <span class="name">x3</span> <span class="operator word">&lt;-</span> <span class="name">divM</span> <span class="name">x2</span> <span class="name">y2</span>
+    <span class="name">divM</span> <span class="name">x3</span> <span class="name">y3</span>
+</pre>
+<p>On s’éloigne du fonctionnement réel des opérations, mais le sens de l’ensemble apparaît plus clairement. Mais ce n’est pas le seul intérêt d’une monade, et pour ainsi dire, ce serait même le plus marginal.</p>
+<aside class="question">
+<p class="first admonition-title"></p>
+<p class="last">Tant mieux, parce que ça paraît très compliqué pour pas grand chose, pour l’instant.</p>
+</aside>
+<p>Une monade a surtout l’avantage de créer un <strong>contexte</strong> de programmation. Concrètement, qu’est-ce que cela signifie&nbsp;? Deux choses. D’un point de vue formel, utiliser une séquence de <code>bind</code> permet de s’assurer que le traitement ne sorte jamais de la monade.</p>
+<p>Si vous vous souvenez de la définition intuitive donnée au début de ce cours, une monade est une boite, dans laquelle on met des données, pour ne plus les en ressortir. En pratique, <code>bind</code> ressort les données de la boite, mais la fonction passée en paramètre de <code>bind</code> les y remet aussitôt&nbsp;: du point de vue du programmeur, tout se passe en coulisse.</p>
+<p>Du point de vue du fond, réaliser un traitement au sein d’une monade donne un sens à ce traitement, sens qui dépend — précisément&nbsp;— de la monade employée. Par exemple, notre monade <code>Maybe</code> signifie «&nbsp;<strong>Attention, ce morceau de programme peut échouer&nbsp;!</strong>&nbsp;».</p>
+<p>La monade de liste, que nous avons vue dans la première section, sert quant à elle à signaler un traitement dont chaque étape peut avoir zéro, un, ou plusieurs résultats différents, sans qu’on puisse vraiment en prévoir le nombre exact.</p>
+<p>Par exemple, une intelligence artificielle pour jeu de Puissance 4, qui cherche à déterminer toutes les configurations possibles sur les six coups à venir, pour trouver la plus favorable&nbsp;: certaines branches mèneront à des culs de sac, d’autres offriront plus ou moins de possibilités de poursuivre, certaines colonnes pouvant se trouver pleines.</p>
+<aside class="question">
+<p class="first admonition-title"></p>
+<p class="last">Et la célèbre monade <code>IO</code> dans tout ça&nbsp;?</p>
+</aside>
+<p>C’est certainement la plus importante de toutes. Une fois entré dans cette monade, il est absolument impossible d’en sortir, et elle confère le sens de «&nbsp;<strong>Attention&nbsp;! Attention&nbsp;! Comportement impur ici, on modifie le monde réel. Effets de bord à prévoir.</strong>&nbsp;». C’est le moyen qu’a trouvé le Haskell de représenter avec des outils de programmation fonctionnelle pure des opérations qui génèrent des effets de bord, comme afficher un texte à l’écran ou lire le contenu d’un fichier.</p>
+<p>Voyons cela plus en détail. Les opérations d’entrée-sortie représentent deux sévères épines dans le pied de la programmation fonctionnelle pure, et l’utilisation d’une monade permet de contourner les deux problèmes.</p>
+<p>Tout d’abord, l’absence d’effet de bord (également appelée <strong>transparence du référentiel</strong>) a pour conséquence qu’une fonction appelée deux fois avec les mêmes paramètres donnera nécessairement deux fois le même résultat. Cela autorise donc à garder ce résultat en mémoire, plutôt que de répéter le traitement lors du deuxième appel&nbsp;: on nomme cela la <strong>mémoïsation</strong>.</p>
+<p>Seulement, <em>quid</em> de la fonction <code>getLine</code>, qui lit une ligne de texte entrée par l’utilisateur&nbsp;? Appelée deux fois de suite, la probabilité que l’utilisateur tape strictement la même chose la deuxième fois est infime. Mais comment savoir que cette fonction ne doit pas être mémoïsée, contrairement à toutes les autres&nbsp;? En la «&nbsp;marquant&nbsp;» du sceau de l’impureté, ce qui se fait en lui donnant le type <code>IO String</code> plutôt que <code>String</code>.</p>
+<p>Plus fourbe&nbsp;: la transparence du référentiel a aussi pour conséquence que si deux fonctions ne dépendent pas l’une de l’autre, l’ordre dans lequel elles sont exécutées n’a strictement aucune importance. Mais il en va tout autrement des opérations d’entrée-sortie&nbsp;: si vous demandez à votre utilisateur de vous fournir son nom puis son prénom, il est indispensable que vous soyez certain de l’ordre dans lequel chacun sera demandé.</p>
+<p>En <code>bind</code>ant les fonctions au sein de la monade IO, vous créez une dépendance artificielle entre elles, qui oblige celle que vous placez en premier dans le code à être effectivement exécutée la première. Cela peut apparaître plus clairement sur un code.</p>
+<pre class="code haskell literal-block">
+<span class="name function">prénom</span> <span class="operator word">=</span> <span class="name">getLine</span>
+<span class="name function">nom</span> <span class="operator word">=</span> <span class="name">getLine</span>
+<span class="name function">main</span> <span class="operator word">=</span> <span class="name">putStrLn</span> <span class="punctuation">(</span><span class="literal string">&quot;Bonjour &quot;</span> <span class="operator">++</span> <span class="name">prénom</span> <span class="operator">++</span> <span class="literal string">&quot; &quot;</span> <span class="operator">++</span> <span class="name">nom</span><span class="punctuation">)</span>
+</pre>
+<pre class="code haskell literal-block">
+<span class="name function">main</span> <span class="operator word">=</span> <span class="name">getLine</span>
+    <span class="punctuation">`</span><span class="name">bind</span><span class="punctuation">`</span> <span class="name function">\</span><span class="name">prénom</span> <span class="operator word">-&gt;</span> <span class="punctuation">(</span><span class="name">getLine</span>
+    <span class="punctuation">`</span><span class="name">bind</span><span class="punctuation">`</span> <span class="name function">\</span><span class="name">nom</span> <span class="operator word">-&gt;</span> <span class="name">putStrLn</span> <span class="punctuation">(</span><span class="literal string">&quot;Bonjour &quot;</span> <span class="operator">++</span> <span class="name">prénom</span> <span class="operator">++</span> <span class="literal string">&quot; &quot;</span> <span class="operator">++</span> <span class="name">nom</span><span class="punctuation">))</span>
+</pre>
+<p>Dans le premier code, <code>prénom</code> et <code>nom</code> ne dépendent pas l’une de l’autre&nbsp;: rien ne vous permet de savoir si votre programme va commencer par demander le prénom ou le nom<a class="footnote-reference" href="#id28" id="id10"><sup>9</sup></a>, donc si les informations fournies par l’utilisateur seront dans le bon ordre lorsque le programme les affichera à l’écran.</p>
+<p>Dans le second, au contraire, il est indispensable que le premier <code>getLine</code> ait été exécuté avant que le programme puisse passer à l’exécution de l’ensemble <code>\prénom -&gt; […] nom))</code>, donc au second <code>getLine</code>. On a réussi à forcer un ordre d’exécution, censément incompatible avec la programmation fonctionnelle pure.</p>
+<h1 id="un-outil-multi-langages">Un outil multi-langages</h1>
+<aside class="question">
+<p class="first admonition-title"></p>
+<p class="last">Les monades sont-elles réservées au Haskell ou aux langages proches de celui-ci&nbsp;?</p>
+</aside>
+<p>Absolument pas&nbsp;! Il est possible de créer des monades dans de nombreux langages, avec plus ou moins de difficultés. Prenons par exemple le OCaml, un autre des principaux langages fonctionnels, où les monades ne sont pourtant pas d’usage aussi courant qu’en Haskell. La monade <code>Maybe</code> s’implémenterait simplement comme suit<a class="footnote-reference" href="#id29" id="id11"><sup>10</sup></a>.</p>
+<pre class="code ocaml literal-block">
+<span class="keyword">type</span> <span class="keyword">'</span><span class="name">a</span> <span class="name">maybe</span> <span class="operator">=</span> <span class="name class">Nothing</span> <span class="operator">|</span> <span class="name class">Just</span> <span class="keyword">of</span> <span class="keyword">'</span><span class="name">a</span>
+
+<span class="keyword">let</span> <span class="name">return</span> <span class="operator">=</span> <span class="name class">Just</span>
+
+<span class="keyword">let</span> <span class="operator">(</span><span class="name">bind</span><span class="operator">)</span> <span class="name">m</span> <span class="name">f</span> <span class="operator">=</span>
+    <span class="keyword">match</span> <span class="name">m</span> <span class="keyword">with</span>
+    <span class="operator">|</span> <span class="name class">Nothing</span> <span class="operator">-&gt;</span> <span class="name class">Nothing</span>
+    <span class="operator">|</span> <span class="name class">Just</span> <span class="name">a</span> <span class="operator">-&gt;</span> <span class="name">f</span> <span class="name">a</span>
+</pre>
+<p>Contrairement au Haskell, le(s) paramètre(s) des types se place(nt) avant le nom de ceux-ci, d’où la syntaxe <code>'a maybe</code>. Par ailleurs, la structure <code>match … with</code> sert à faire du filtrage par motif, comme on l’a déjà vu. Et comme vous pouvez le constater, cela reste très facile à mettre en place.</p>
+<p>On peut ainsi réaliser des divisions successives sur un nombre, en s’assurant qu’une division par zéro renvoie une erreur, et que celle-ci soit répercutée sur la suite des opérations. Voici un exemple de comment cela pourrait se faire.</p>
+<pre class="code ocaml literal-block">
+<span class="keyword">let</span> <span class="name">divM</span> <span class="name">x</span> <span class="name">y</span> <span class="operator">=</span> <span class="keyword">if</span> <span class="name">y</span> <span class="operator">=</span> <span class="literal number integer">0</span><span class="operator">.</span> <span class="keyword">then</span> <span class="name class">Nothing</span> <span class="keyword">else</span> <span class="name class">Just</span> <span class="operator">(</span><span class="name">x</span> <span class="operator">/.</span> <span class="name">y</span><span class="operator">)</span>
+
+<span class="keyword">let</span> <span class="name">impossible</span> <span class="operator">=</span> <span class="name class">Just</span> <span class="literal number integer">35</span><span class="operator">.</span>
+                 <span class="name">bind</span> <span class="keyword">fun</span> <span class="name">x</span> <span class="operator">-&gt;</span> <span class="name">divM</span> <span class="name">x</span> <span class="literal number integer">5</span><span class="operator">.</span>
+                 <span class="name">bind</span> <span class="keyword">fun</span> <span class="name">x</span> <span class="operator">-&gt;</span> <span class="name">divM</span> <span class="name">x</span> <span class="literal number integer">0</span><span class="operator">.</span>
+                 <span class="name">bind</span> <span class="keyword">fun</span> <span class="name">x</span> <span class="operator">-&gt;</span> <span class="name">divM</span> <span class="name">x</span> <span class="literal number integer">7</span><span class="operator">.</span>
+</pre>
+<p>Si l’on peut placer la fonction <code>bind</code> entre ses deux arguments, comme on le fait en Haskell, c’est parce qu’on l’a déclarée entourée de parenthèses dans le code un peu plus haut. Sans cela, la syntaxe serait très lourde.</p>
+<p>Autre exemple, le Rust&nbsp;: un langage multi-paradigmes, qui intègre plutôt bien les outils de la programmation fonctionnelle. Voici comment on pourrait implémenter la monade <code>Maybe</code><a class="footnote-reference" href="#id30" id="id12"><sup>11</sup></a>.</p>
+<pre class="code rust literal-block">
+<span class="keyword">enum</span><span class="whitespace"> </span><span class="name">Maybe</span><span class="operator">&lt;</span><span class="name">A</span><span class="operator">&gt;</span><span class="whitespace"> </span><span class="punctuation">{</span><span class="whitespace">
+    </span><span class="name">Just</span><span class="punctuation">(</span><span class="name">A</span><span class="punctuation">),</span><span class="whitespace">
+    </span><span class="name">Nothing</span><span class="whitespace">
+</span><span class="punctuation">}</span><span class="whitespace">
+
+</span><span class="keyword">fn</span><span class="whitespace"> </span><span class="name">lift</span><span class="operator">&lt;</span><span class="name">A</span><span class="operator">&gt;</span><span class="punctuation">(</span><span class="name">a</span><span class="whitespace"> </span><span class="operator">:</span><span class="whitespace"> </span><span class="name">A</span><span class="punctuation">)</span><span class="whitespace"> </span><span class="operator">-&gt;</span><span class="whitespace"> </span><span class="name">Maybe</span><span class="operator">&lt;</span><span class="name">A</span><span class="operator">&gt;</span><span class="whitespace"> </span><span class="punctuation">{</span><span class="whitespace">
+    </span><span class="name">Maybe</span><span class="operator">::</span><span class="name">Just</span><span class="punctuation">(</span><span class="name">a</span><span class="punctuation">)</span><span class="whitespace">
+</span><span class="punctuation">}</span><span class="whitespace">
+
+</span><span class="keyword">impl</span><span class="operator">&lt;</span><span class="name">A</span><span class="operator">&gt;</span><span class="whitespace"> </span><span class="name">Maybe</span><span class="operator">&lt;</span><span class="name">A</span><span class="operator">&gt;</span><span class="whitespace"> </span><span class="punctuation">{</span><span class="whitespace">
+    </span><span class="keyword">fn</span><span class="whitespace"> </span><span class="name">bind</span><span class="operator">&lt;</span><span class="name">B</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">F</span><span class="operator">&gt;</span><span class="punctuation">(</span><span class="name builtin pseudo">self</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">f</span><span class="whitespace"> </span><span class="operator">:</span><span class="whitespace"> </span><span class="name">F</span><span class="punctuation">)</span><span class="whitespace"> </span><span class="operator">-&gt;</span><span class="whitespace"> </span><span class="name">Maybe</span><span class="operator">&lt;</span><span class="name">B</span><span class="operator">&gt;</span><span class="whitespace">
+        </span><span class="name">where</span><span class="whitespace"> </span><span class="name">F</span><span class="whitespace"> </span><span class="operator">:</span><span class="whitespace"> </span><span class="name builtin">Fn</span><span class="punctuation">(</span><span class="name">A</span><span class="punctuation">)</span><span class="whitespace"> </span><span class="operator">-&gt;</span><span class="whitespace"> </span><span class="name">Maybe</span><span class="operator">&lt;</span><span class="name">B</span><span class="operator">&gt;</span><span class="whitespace">    </span><span class="punctuation">{</span><span class="whitespace">
+        </span><span class="keyword">match</span><span class="whitespace"> </span><span class="name builtin pseudo">self</span><span class="whitespace"> </span><span class="punctuation">{</span><span class="whitespace">
+            </span><span class="name">Maybe</span><span class="operator">::</span><span class="name">Nothing</span><span class="whitespace"> </span><span class="operator">=&gt;</span><span class="whitespace"> </span><span class="name">Maybe</span><span class="operator">::</span><span class="name">Nothing</span><span class="punctuation">,</span><span class="whitespace">
+            </span><span class="name">Maybe</span><span class="operator">::</span><span class="name">Just</span><span class="punctuation">(</span><span class="name">a</span><span class="punctuation">)</span><span class="whitespace"> </span><span class="operator">=&gt;</span><span class="whitespace"> </span><span class="name">f</span><span class="punctuation">(</span><span class="name">a</span><span class="punctuation">)</span><span class="whitespace">
+        </span><span class="punctuation">}</span><span class="whitespace">
+    </span><span class="punctuation">}</span><span class="whitespace">
+</span><span class="punctuation">}</span>
+</pre>
+<p>Quelques explications pour ne pas être bloqués par la syntaxe.</p>
+<ul class="simple">
+<li>Les notations entre chevrons, par exemple <code>&lt;A&gt;</code>, servent à définir les types et fonctions paramétrées.</li>
+<li>On ne peut appeler une fonction <code>return</code>, car c’est un mot-clef du langage, aussi, on se rabat sur <code>lift</code>.</li>
+<li>Chaque argument d’une fonction doit être typé explicitement, avec la syntaxe <code>:&nbsp;&lt;type&gt;</code>, et le type de retour de la fonction est spécifié après la flèche <code>-&gt;</code>.</li>
+<li>La syntaxe <code>impl&lt;A&gt; Maybe&lt;A&gt; { … }</code> fait de <code>bind</code> une méthode du type <code>Maybe</code>. Ce n’est pas absolument indispensable, mais cela améliore considérablement la syntaxe de l’appel.</li>
+<li>Toute la partie avec <code>F</code> et la ligne qui commence par <code>where</code> est nécessaire pour pouvoir passer des fonctions anonymes en paramètre de <code>bind</code>, il n’est pas nécessaire de la comprendre dans le détail.</li>
+<li>La structure <code>match</code> est le moyen utilisé par le Rust pour implémenter du filtrage par motif, comme en OCaml.</li>
+</ul>
+<p>On reprendra l’exemple des divisions successives pour montrer la mise en action de cette monade.</p>
+<pre class="code rust literal-block">
+<span class="keyword">fn</span><span class="whitespace"> </span><span class="name">divM</span><span class="punctuation">(</span><span class="name">x</span><span class="whitespace"> </span><span class="operator">:</span><span class="whitespace"> </span><span class="keyword type">f64</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">y</span><span class="whitespace"> </span><span class="operator">:</span><span class="whitespace"> </span><span class="keyword type">f64</span><span class="punctuation">)</span><span class="whitespace"> </span><span class="operator">-&gt;</span><span class="whitespace"> </span><span class="name">Maybe</span><span class="operator">&lt;</span><span class="keyword type">f64</span><span class="operator">&gt;</span><span class="whitespace"> </span><span class="punctuation">{</span><span class="whitespace">
+    </span><span class="keyword">if</span><span class="whitespace"> </span><span class="name">y</span><span class="whitespace"> </span><span class="operator">==</span><span class="whitespace"> </span><span class="literal number float">0.0</span><span class="whitespace"> </span><span class="punctuation">{</span><span class="whitespace"> </span><span class="keyword">return</span><span class="whitespace"> </span><span class="name">Maybe</span><span class="operator">::</span><span class="name">Nothing</span><span class="punctuation">;</span><span class="whitespace"> </span><span class="punctuation">}</span><span class="whitespace">
+    </span><span class="name">lift</span><span class="punctuation">(</span><span class="name">x</span><span class="whitespace"> </span><span class="operator">/</span><span class="whitespace"> </span><span class="name">y</span><span class="punctuation">)</span><span class="whitespace">
+</span><span class="punctuation">}</span><span class="whitespace">
+
+</span><span class="keyword">fn</span><span class="whitespace"> </span><span class="name">main</span><span class="punctuation">()</span><span class="whitespace">   </span><span class="punctuation">{</span><span class="whitespace">
+    </span><span class="keyword declaration">let</span><span class="whitespace"> </span><span class="name">m</span><span class="whitespace"> </span><span class="operator">=</span><span class="whitespace"> </span><span class="name">Maybe</span><span class="operator">::</span><span class="name">Just</span><span class="punctuation">(</span><span class="literal number float">35.0</span><span class="punctuation">).</span><span class="name">bind</span><span class="punctuation">(</span><span class="operator">|</span><span class="name">x</span><span class="operator">|</span><span class="whitespace"> </span><span class="name">divM</span><span class="punctuation">(</span><span class="name">x</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="literal number float">5.0</span><span class="punctuation">))</span><span class="whitespace">
+                </span><span class="punctuation">.</span><span class="name">bind</span><span class="punctuation">(</span><span class="operator">|</span><span class="name">x</span><span class="operator">|</span><span class="whitespace"> </span><span class="name">divM</span><span class="punctuation">(</span><span class="name">x</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="literal number float">0.0</span><span class="punctuation">))</span><span class="whitespace">
+                </span><span class="punctuation">.</span><span class="name">bind</span><span class="punctuation">(</span><span class="operator">|</span><span class="name">x</span><span class="operator">|</span><span class="whitespace"> </span><span class="name">divM</span><span class="punctuation">(</span><span class="name">x</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="literal number float">7.0</span><span class="punctuation">));</span><span class="whitespace">
+
+    </span><span class="keyword">match</span><span class="whitespace"> </span><span class="name">m</span><span class="whitespace"> </span><span class="punctuation">{</span><span class="whitespace">
+        </span><span class="name">Maybe</span><span class="operator">::</span><span class="name">Nothing</span><span class="whitespace"> </span><span class="operator">=&gt;</span><span class="whitespace"> </span><span class="name">println</span><span class="operator">!</span><span class="punctuation">(</span><span class="literal string">&quot;Nothing&quot;</span><span class="punctuation">),</span><span class="whitespace">
+        </span><span class="name">Maybe</span><span class="operator">::</span><span class="name">Just</span><span class="punctuation">(</span><span class="keyword">ref</span><span class="whitespace"> </span><span class="name">a</span><span class="punctuation">)</span><span class="whitespace"> </span><span class="operator">=&gt;</span><span class="whitespace"> </span><span class="name">println</span><span class="operator">!</span><span class="punctuation">(</span><span class="literal string">&quot;Just {}&quot;</span><span class="punctuation">,</span><span class="whitespace"> </span><span class="name">a</span><span class="punctuation">)</span><span class="whitespace">
+    </span><span class="punctuation">}</span><span class="whitespace">
+</span><span class="punctuation">}</span>
+</pre>
+<p>La syntaxe <code>|x| divM(x, 5.0)</code> permet de définir une fonction anonyme, ou <em>closure</em> comme elles sont appelées par les Rustacés&nbsp;: dans notre cas, elle prend en entrée un argument <code>x</code>, en l’occurrence, l’éventuel contenu de la valeur monadique, et renvoie le résultat de <code>divM(x, 5.0)</code>, qui est bien une valeur monadique.</p>
+<p>Comme vous pouvez le voir, le fait d’avoir fait de <code>bind</code> une méthode de <code>Maybe</code> permet de chaîner les appels à celle-ci dans une syntaxe fort élégante.</p>
+<p>À vrai dire, il n’est même pas indispensable d’utiliser un langage fonctionnel ou intégrant fortement le paradigme fonctionnel, pour pouvoir créer une monade. Voici l’adaptation en C++11 de notre monade <code>Maybe</code>.</p>
+<pre class="code cpp literal-block">
+<span class="comment preproc">#include</span> <span class="comment preprocfile">&lt;functional&gt;</span><span class="comment preproc">
+#include</span> <span class="comment preprocfile">&lt;utility&gt;</span><span class="comment preproc">
+</span>
+<span class="keyword">template</span> <span class="operator">&lt;</span><span class="keyword">typename</span> <span class="name">A</span><span class="operator">&gt;</span>
+<span class="keyword">class</span> <span class="name class">Maybe</span> <span class="punctuation">{</span>
+
+    <span class="keyword">private</span><span class="operator">:</span>
+    <span class="keyword type">bool</span> <span class="name">_proprio</span><span class="punctuation">{};</span>
+    <span class="name">A</span> <span class="keyword">const</span><span class="operator">*</span> <span class="keyword">const</span> <span class="name">_valeur</span><span class="punctuation">{};</span>
+
+    <span class="keyword">public</span><span class="operator">:</span>
+    <span class="keyword">constexpr</span> <span class="name">Maybe</span><span class="punctuation">()</span> <span class="operator">=</span> <span class="keyword">default</span><span class="punctuation">;</span>
+    <span class="keyword">constexpr</span> <span class="name function">Maybe</span><span class="punctuation">(</span><span class="name">A</span> <span class="keyword">const</span><span class="operator">&amp;</span> <span class="name">valeur</span><span class="punctuation">)</span> <span class="keyword">noexcept</span> <span class="operator">:</span> <span class="name">_valeur</span><span class="punctuation">{</span><span class="operator">&amp;</span><span class="name">valeur</span><span class="punctuation">}</span>    <span class="punctuation">{</span>   <span class="punctuation">}</span>
+    <span class="keyword">constexpr</span> <span class="name">Maybe</span><span class="punctuation">(</span><span class="name">A</span><span class="operator">&amp;&amp;</span> <span class="name">valeur</span><span class="punctuation">)</span>      <span class="keyword">noexcept</span>
+        <span class="operator">:</span> <span class="name">_proprio</span><span class="punctuation">{</span><span class="name builtin">true</span><span class="punctuation">},</span> <span class="name">_valeur</span><span class="punctuation">{</span><span class="keyword">new</span> <span class="name">A</span><span class="punctuation">{</span><span class="name">valeur</span><span class="punctuation">}}</span>
+        <span class="punctuation">{</span>   <span class="punctuation">}</span>
+
+    <span class="keyword">constexpr</span> <span class="name">Maybe</span><span class="punctuation">(</span><span class="name">Maybe</span> <span class="keyword">const</span><span class="operator">&amp;</span> <span class="name">m</span><span class="punctuation">)</span>  <span class="keyword">noexcept</span> <span class="operator">:</span> <span class="name">_valeur</span><span class="punctuation">{</span><span class="name">m</span><span class="punctuation">.</span><span class="name">_valeur</span><span class="punctuation">}</span>  <span class="punctuation">{</span>   <span class="punctuation">}</span>
+    <span class="keyword">constexpr</span> <span class="name">Maybe</span><span class="operator">&amp;</span> <span class="keyword">operator</span><span class="operator">=</span><span class="punctuation">(</span><span class="name">Maybe</span> <span class="keyword">const</span><span class="operator">&amp;</span> <span class="name">m</span><span class="punctuation">)</span> <span class="keyword">noexcept</span> <span class="punctuation">{</span>
+        <span class="name">_proprio</span> <span class="operator">=</span> <span class="name builtin">false</span><span class="punctuation">;</span>
+        <span class="name">_valeur</span> <span class="operator">=</span> <span class="name">m</span><span class="punctuation">.</span><span class="name">_valeur</span><span class="punctuation">;</span>
+        <span class="keyword">return</span> <span class="operator">*</span><span class="keyword">this</span><span class="punctuation">;</span>
+    <span class="punctuation">}</span>
+
+    <span class="operator">~</span><span class="name">Maybe</span><span class="punctuation">()</span> <span class="punctuation">{</span> <span class="keyword">if</span><span class="punctuation">(</span><span class="name">_proprio</span><span class="punctuation">)</span> <span class="keyword">delete</span> <span class="name">_valeur</span><span class="punctuation">;</span> <span class="punctuation">}</span>
+
+    <span class="keyword reserved">inline</span> <span class="keyword">constexpr</span> <span class="keyword">static</span> <span class="name">Maybe</span> <span class="name">Nothing</span><span class="punctuation">()</span> <span class="keyword">noexcept</span> <span class="punctuation">{</span>
+        <span class="keyword">return</span> <span class="name">Maybe</span><span class="punctuation">();</span>
+    <span class="punctuation">}</span>
+
+    <span class="keyword">template</span><span class="operator">&lt;</span><span class="keyword">typename</span> <span class="punctuation">...</span><span class="name">Args</span><span class="operator">&gt;</span>
+    <span class="keyword reserved">inline</span> <span class="keyword">constexpr</span> <span class="keyword">static</span> <span class="name">Maybe</span> <span class="name">Just</span><span class="punctuation">(</span><span class="name">Args</span><span class="operator">&amp;&amp;</span><span class="punctuation">...</span> <span class="name">args</span><span class="punctuation">)</span> <span class="keyword">noexcept</span> <span class="punctuation">{</span>
+        <span class="keyword">return</span> <span class="name">Maybe</span><span class="punctuation">(</span><span class="name">std</span><span class="operator">::</span><span class="name">forward</span><span class="operator">&lt;</span><span class="name">Args</span><span class="operator">&gt;</span><span class="punctuation">(</span><span class="name">args</span><span class="punctuation">)...);</span>
+    <span class="punctuation">}</span>
+
+    <span class="keyword">template</span><span class="operator">&lt;</span><span class="keyword">typename</span> <span class="name">F</span><span class="punctuation">,</span> <span class="keyword">typename</span> <span class="punctuation">...</span><span class="name">Args</span><span class="operator">&gt;</span>
+    <span class="keyword reserved">inline</span> <span class="keyword">constexpr</span> <span class="name">Maybe</span> <span class="name">bind</span><span class="punctuation">(</span><span class="name">F</span><span class="operator">&amp;&amp;</span> <span class="name">f</span><span class="punctuation">,</span> <span class="name">Args</span><span class="operator">&amp;&amp;</span><span class="punctuation">...</span> <span class="name">args</span><span class="punctuation">)</span> <span class="keyword">const</span> <span class="punctuation">{</span>
+        <span class="keyword">if</span> <span class="punctuation">(</span><span class="operator">!</span><span class="name">_valeur</span><span class="punctuation">)</span> <span class="keyword">return</span> <span class="name">Nothing</span><span class="punctuation">();</span>
+        <span class="keyword">return</span> <span class="name function">Maybe</span><span class="punctuation">(</span><span class="name">f</span><span class="punctuation">(</span><span class="operator">*</span><span class="name">_valeur</span><span class="punctuation">,</span> <span class="name">std</span><span class="operator">::</span><span class="name">forward</span><span class="operator">&lt;</span><span class="name">Args</span><span class="operator">&gt;</span><span class="punctuation">(</span><span class="name">args</span><span class="punctuation">)...));</span>
+    <span class="punctuation">}</span>
+
+    <span class="name">A</span> <span class="name">valeur</span><span class="punctuation">()</span> <span class="keyword">const</span> <span class="punctuation">{</span>
+        <span class="keyword">if</span> <span class="punctuation">(</span><span class="name">_valeur</span><span class="punctuation">)</span> <span class="keyword">return</span> <span class="operator">*</span><span class="name">_valeur</span><span class="punctuation">;</span>
+        <span class="keyword">return</span> <span class="literal number integer">0</span><span class="punctuation">;</span>
+    <span class="punctuation">}</span>
+<span class="punctuation">};</span>
+</pre>
+<p>C’est en voyant combien le code est beaucoup plus encombré que l’on comprend que les monades ne sont pas très naturelles dans ce langage. Il me serait impossible de totalement détailler le code, alors je m’en tiendrai à signaler que <code>template &lt;typename A&gt;</code> sert à gérer les types paramétrés.</p>
+<p>Mais une fois ce gros travail effectué en amont, et en supposant toujours notre succession de divisions, on peut alors utiliser la syntaxe suivante.</p>
+<pre class="code cpp literal-block">
+<span class="keyword type">int</span> <span class="name function">main</span><span class="punctuation">()</span>  <span class="punctuation">{</span>
+    <span class="keyword">auto</span> <span class="name">divM</span>  <span class="operator">=</span> <span class="punctuation">[](</span><span class="keyword">auto</span> <span class="name">x</span><span class="punctuation">,</span> <span class="keyword">auto</span> <span class="name">y</span><span class="punctuation">)</span> <span class="punctuation">{</span>
+        <span class="keyword">if</span> <span class="punctuation">(</span><span class="name">y</span> <span class="operator">==</span> <span class="literal number integer">0</span><span class="punctuation">)</span> <span class="keyword">return</span> <span class="name">Maybe</span><span class="operator">&lt;</span><span class="keyword type">double</span><span class="operator">&gt;::</span><span class="name">Nothing</span><span class="punctuation">();</span>
+        <span class="keyword">return</span> <span class="name">Maybe</span><span class="operator">&lt;</span><span class="keyword type">double</span><span class="operator">&gt;::</span><span class="name">Just</span><span class="punctuation">(</span><span class="name">x</span> <span class="operator">/</span> <span class="name">y</span><span class="punctuation">);</span>
+    <span class="punctuation">};</span>
+    <span class="keyword">auto</span> <span class="name">div0M</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="name">divM</span><span class="punctuation">](</span><span class="keyword">auto</span> <span class="name">x</span><span class="punctuation">){</span> <span class="keyword">return</span> <span class="name">divM</span><span class="punctuation">(</span><span class="name">x</span><span class="punctuation">,</span> <span class="literal number float">0.0</span><span class="punctuation">);</span> <span class="punctuation">};</span>
+    <span class="keyword">auto</span> <span class="name">div5M</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="name">divM</span><span class="punctuation">](</span><span class="keyword">auto</span> <span class="name">x</span><span class="punctuation">){</span> <span class="keyword">return</span> <span class="name">divM</span><span class="punctuation">(</span><span class="name">x</span><span class="punctuation">,</span> <span class="literal number float">5.0</span><span class="punctuation">);</span> <span class="punctuation">};</span>
+    <span class="keyword">auto</span> <span class="name">div7M</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="name">divM</span><span class="punctuation">](</span><span class="keyword">auto</span> <span class="name">x</span><span class="punctuation">){</span> <span class="keyword">return</span> <span class="name">divM</span><span class="punctuation">(</span><span class="name">x</span><span class="punctuation">,</span> <span class="literal number float">7.0</span><span class="punctuation">);</span> <span class="punctuation">};</span>
+
+    <span class="name">Maybe</span><span class="operator">&lt;</span><span class="keyword type">double</span><span class="operator">&gt;::</span><span class="name">Just</span><span class="punctuation">(</span><span class="literal number float">35.0</span><span class="punctuation">).</span><span class="name">bind</span><span class="punctuation">(</span><span class="name">div5M</span><span class="punctuation">).</span><span class="name">bind</span><span class="punctuation">(</span><span class="name">div0M</span><span class="punctuation">).</span><span class="name">bind</span><span class="punctuation">(</span><span class="name">div7M</span><span class="punctuation">);</span>
+
+    <span class="keyword">return</span> <span class="literal number integer">0</span><span class="punctuation">;</span>
+<span class="punctuation">}</span>
+</pre>
+<p>Si la syntaxe finale est assez élégante, il n’en reste pas moins qu’utiliser des fonctions anonymes comme dans les autres langages est une véritable plaie, et que faire une définition «&nbsp;propre&nbsp;» de notre monade <code>Maybe</code> est excessivement difficile. C’est pourquoi vous rencontrerez assez peu de monades dans des langages impératifs.</p>
+<p>Mais cela arrive&nbsp;! La bibliothèque <a class="reference external" href="https://github.com/ReactiveX/RxJava/wiki/How-To-Use-RxJava">ReactiveX</a> de Java, Groovy, Clojure… offre le triplet (<code>Observable</code>, <code>from</code>, <code>subscribe</code>) qui constitue une monade de la plus belle espèce.</p>
+<p>En revanche, s’il est en théorie possible de créer des monades dans un langage utilisant un système de typage dynamique, cela s’avère très artificiel, comme le montre cet exemple en Erlang.</p>
+<pre class="code erlang literal-block">
+<span class="name function">return</span> <span class="punctuation">(</span><span class="name variable">A</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="punctuation">{</span><span class="name">just</span><span class="punctuation">,</span> <span class="name variable">A</span><span class="punctuation">}.</span>
+
+<span class="name function">bind</span> <span class="punctuation">({</span><span class="name">nothing</span><span class="punctuation">},</span> <span class="punctuation">_)</span> <span class="operator">-&gt;</span> <span class="punctuation">{</span><span class="name">nothing</span><span class="punctuation">};</span>
+<span class="name function">bind</span> <span class="punctuation">({</span><span class="name">just</span><span class="punctuation">,</span> <span class="name variable">A</span><span class="punctuation">},</span> <span class="name variable">F</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="name variable">F</span><span class="punctuation">(</span><span class="name variable">A</span><span class="punctuation">).</span>
+
+<span class="name function">divM</span> <span class="punctuation">(</span><span class="name variable">X</span><span class="punctuation">,</span> <span class="name variable">Y</span><span class="punctuation">)</span> <span class="keyword">when</span> <span class="name variable">Y</span> <span class="operator">==</span> <span class="literal number integer">0</span> <span class="operator">-&gt;</span> <span class="punctuation">{</span><span class="name">nothing</span><span class="punctuation">};</span>
+<span class="name function">divM</span> <span class="punctuation">(</span><span class="name variable">X</span><span class="punctuation">,</span> <span class="name variable">Y</span><span class="punctuation">)</span> <span class="keyword">when</span> <span class="name variable">Y</span> <span class="operator">/=</span> <span class="literal number integer">0</span> <span class="operator">-&gt;</span> <span class="name">return</span><span class="punctuation">(</span><span class="name variable">X</span> <span class="operator">/</span> <span class="name variable">Y</span><span class="punctuation">).</span>
+
+<span class="name function">impossible</span><span class="punctuation">()</span> <span class="operator">-&gt;</span>
+    <span class="name">bind</span><span class="punctuation">(</span>
+        <span class="name">bind</span><span class="punctuation">(</span>
+            <span class="name">bind</span><span class="punctuation">(</span><span class="name">return</span><span class="punctuation">(</span><span class="literal number integer">35</span><span class="punctuation">.</span><span class="literal number integer">0</span><span class="punctuation">),</span> <span class="keyword">fun</span> <span class="punctuation">(</span><span class="name variable">X</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="name">divM</span><span class="punctuation">(</span><span class="name variable">X</span><span class="punctuation">,</span> <span class="literal number integer">5</span><span class="punctuation">.</span><span class="literal number integer">0</span><span class="punctuation">)</span> <span class="keyword">end</span><span class="punctuation">)</span>
+        <span class="punctuation">,</span> <span class="keyword">fun</span> <span class="punctuation">(</span><span class="name variable">X</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="name">divM</span><span class="punctuation">(</span><span class="name variable">X</span><span class="punctuation">,</span> <span class="literal number integer">0</span><span class="punctuation">.</span><span class="literal number integer">0</span><span class="punctuation">)</span> <span class="keyword">end</span><span class="punctuation">)</span>
+    <span class="punctuation">,</span> <span class="keyword">fun</span> <span class="punctuation">(</span><span class="name variable">X</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="name">divM</span><span class="punctuation">(</span><span class="name variable">X</span><span class="punctuation">,</span> <span class="literal number integer">7</span><span class="punctuation">.</span><span class="literal number integer">0</span><span class="punctuation">)</span> <span class="keyword">end</span><span class="punctuation">).</span>
+</pre>
+<p>Le type <code>Maybe</code> n’est pas défini, puisque cela ne fait pas partie de l’ordre des possibles en Erlang, et il est simulé par un tuple, soit de la forme <code>{nothing}</code>, soit de la forme <code>{just, &lt;quelque chose&gt;}</code>. Dès lors, on peut en effet implémenter la fonction <code>bind</code> à l’aide d’un simple filtrage par motif, mais il n’est fait aucune vérification sur la nature de la fonction passée en paramètre. Le résultat est une imbrication assez inélégante de <code>bind( … )</code>.</p>
+<p>Cela nous amène à la constatation suivante&nbsp;: s’il est effectivement possible de créer des monades dans presque tous les langages, certains d’entre eux se montrent nettement rétifs à cette utilisation. Alors, est-ce un problème&nbsp;?</p>
+<h1 id="necessite">Nécessité&nbsp;?</h1>
+<aside class="question">
+<p class="first admonition-title"></p>
+<p class="last">Est-il indispensable de maîtriser les monades pour utiliser un langage fonctionnel pur&nbsp;?</p>
+</aside>
+<p>Absolument pas. Je vais le mettre en gros, pour être sûr que le message passe bien.</p>
+<aside class="important">
+<p class="first admonition-title"></p>
+<p class="last">Il n’est pas nécessaire de comprendre les monades pour programmer dans un langage fonctionnel pur&nbsp;: c’est une notion avancée, d’usage limité.</p>
+</aside>
+<p>Il y a plusieurs raisons à cela. Pour commencer, en Haskell, la seule monade dont le langage ne peut absolument pas se passer, c’est la monade <code>IO</code>. Or gérer les entrées-sorties au moyen d’une monade n’est qu’une solution parmi d’autres.</p>
+<p>On peut bien sûr accepter d’intégrer l’impureté dans le langage, comme en OCaml, ou de faire une croix sur les interactions avec le monde extérieur, comme le langage Charity, mais ce ne sont que des pis-aller. En restant parfaitement pur, deux autres solutions se sont fait jour à l’heure actuelle.</p>
+<ul class="simple">
+<li>Les langages Clean, Idris et Mercury intègrent l’<strong>unicité</strong> dans leur système de types. En très simplifié, cela consiste à déclarer qu’une variable donnée est à usage unique, cela étant intégré dans son type, si bien que la vérification du typage échouera si cette variable est employée à deux endroits différents du code&nbsp;: le fichier dans lequel on vient de lire une ligne n’est pas le même, du point de vue du programme, que celui dans lequel on va lire la ligne suivante.</li>
+<li>Le langage Elm utilise une abstraction appelée «&nbsp;signal&nbsp;», dont le fonctionnement serait trop long à expliquer ici&nbsp;: on s’en sert pour marquer qu’un objet peut voir sa valeur évoluer dans le temps, et qu’il faudra alors répéter le traitement avec la nouvelle valeur.</li>
+</ul>
+<p>Ensuite, même au sein du Haskell, les monades permettent de résoudre un type très spécifique de problèmes&nbsp;: ceux qui nécessitent de composer des fonctions de manière non triviale. Dans la pratique, vous pourrez écrire de nombreux programmes sans jamais avoir besoin de créer une monade pour arriver à vos fins.</p>
+<p>Quant à utiliser les monades déjà présentes dans la bibliothèque standard, vous ne pourrez certainement pas échapper à la monade <code>IO</code>. Pour les autres, en revanche, c’est différent&nbsp;: les listes et le type <code>Maybe</code>, par exemple, sont très utiles en soi, mais les occasions où il est nécessaire d’utiliser leur aspect monadique sont en réalité assez rares.</p>
+<p>Reste donc la monade <code>IO</code>. Est-il nécessaire de comprendre comment fonctionnent les monades pour s’en servir&nbsp;? Non. La notation <code>do</code> s’abstrait presque complètement du fonctionnement réel de la monade sous-jacente, et offre une syntaxe plus claire à l’usage.</p>
+<hr class="docutils" />
+<p>Comme je manque cruellement d’imagination pour représenter une monade d’une manière qui ne fasse pas peur, j’ai lâchement emprunté une illustration tirée de <a class="reference external" href="http://lyah.haskell.fr/">Learn You a Haskell For Great Good!</a> de Miran Lipovača pour mon logo&nbsp;; celui-ci reste donc la propriété de M. Lipovača, distribuée sous licence <a class="reference external" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed.fr">Creative Commons BY-SA-NC</a>.</p>
+<p>Merci à <a class="reference external" href="https://zestedesavoir.com/membres/voir/Vayel/">Vayel</a> pour ses très nombreux commentaires en bêta, à <a class="reference external" href="https://zestedesavoir.com/membres/voir/gbdivers">gbdivers</a> pour son intervention sur le code C++ et à <a class="reference external" href="https://zestedesavoir.com/membres/voir/Javier">Javier</a> pour son exemple de ReactiveX.</p>
+<p>Si vous n’avez pas trouvé votre bonheur avec mon explication, et que vous connaissez un peu d’anglais, vous pourrez trouver sur <a class="reference external" href="https://wiki.haskell.org/Monad_tutorials_timeline">cette page</a> des liens vers la quasi-totalité des cours anglophones sur les monades existant à ce jour. Environ 85 à l’heure où j’écris ces lignes. Oui.</p>
+<hr class="docutils" />
+<table class="docutils footnote" frame="void" id="id20" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Le mot est faible…</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id21" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[2]</a></td><td>C’est la boite de la définition intuitive.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id22" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id4">[3]</a></td><td>On place l’objet dans la boite.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id23" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id5">[4]</a></td><td>La boite et son contenu.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id24" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id6">[5]</a></td><td>On sort le contenu de la boite, on lui applique un traitement, et on le remet dans la boite.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id25" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id7">[6]</a></td><td>Comme dit dans la définition intuitive, cette fonction peut modifier le type de l’objet encapsulé, ce n’est pas gênant. On peut, par exemple, avoir une fonction qui prend un flottant en entrée et renvoie un arrondi entier de celui-ci, encapsulé dans le type de la monade.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id26" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id8">[7]</a></td><td>Ce n’est pas fondamentalement utile, avouons-le. Mais l’exemple est simple.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id27" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id9">[8]</a></td><td>Et seulement lui ou les langages qui en sont dérivés, désolé.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id28" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id10">[9]</a></td><td>Si vous avez l’habitude de la programmation impérative, cela vous paraîtra sans doute totalement contre-intuitif, mais c’est ainsi qu’il en va en programmation fonctionnelle pure&nbsp;: ce n’est pas parce qu’un élément se trouve avant un autre dans l’expression qu’il sera nécessairement évalué en premier.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id29" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id11">[10]</a></td><td>Notez bien que la bibliothèque standard du OCaml propose le type <code>Option</code> qui n’est autre que <code>Maybe</code> sous un autre nom, mais j’ai préféré rester cohérent entre les exemples.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id30" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id12">[11]</a></td><td>La bibliothèque standard du Rust propose le même type <code>Option</code> que celle du OCaml.</td></tr>
+</tbody>
+</table>
