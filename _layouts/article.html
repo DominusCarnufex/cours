@@ -1,0 +1,28 @@
+---
+layout: default
+---
+
+<nav id="side">
+
+{% if page.slug %}
+  {% include {{ page.slug | prepend: 'metadonnees-' | append: '.html' }} %}
+{% endif %}
+
+</nav>
+
+<article>
+  <!--<div id="toggleserif">
+    <span class="btn" id="btnserif" onclick="toggle_serif()">Police à empattements</span>
+  </div>-->
+      
+  {{ content }}
+
+</article><!-- End of main content. -->
+
+<nav id="bottom">
+
+{% if page.slug %}
+  {% include {{ page.slug | prepend: 'metadonnees-' | append: '.html' }} %}
+{% endif %}
+
+</nav>

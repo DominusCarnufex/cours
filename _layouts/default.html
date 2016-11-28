@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="language" content="fr">
+    <meta http-equiv="content-language" content="fr">
+    <title>{{ page.navtitle }}</title>
+    <link rel="stylesheet" type="text/css" href="{{ site.baseurl }}/static/main.css">
+  </head>
+  <body>
+    <nav id="top">
+      <ul>
+        <li><a href="{{ site.baseurl }}/">Accueil</a></li>
+      </ul>
+    </nav>
+
+    <header>
+      <div id="header-insides">
+        <h1>{{ page.maintitle }}</h1>
+        <h2>{{ page.subtitle }}</h2>
+        {% if page.auteur %}<div id="auteur">Publié par {{ page.auteur }} le {{ page.pubdate }} sous licence 
+          {% if page.licence == "BiPu-L" %}
+            <a href="http://www.teladiai.re/public/licences/BiPu_L.pdf">BiPu-L</a>
+          {% elsif page.licence == "CC BY-SA" %}
+            <a href="https://creativecommons.org/licenses/by-sa/3.0/legalcode.fr">Crative Commons BY-SA</a>
+          {% else %}
+            Tous droits réservés
+          {% endif %}
+        .</div>{% endif %}
+        
+      </div>
+    </header>
+
+    <main>
+      {{ content }}
+    </main>
+
+    <footer>
+      <a href="{{ site.baseurl }}/index.html#mentions-legales">Mentions légales</a>
+    </footer>
+  </body>
+</html>

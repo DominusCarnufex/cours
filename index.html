@@ -1,0 +1,33 @@
+---
+layout: default
+maintitle: Maître Carnufex en saigne
+subtitle: Dominum Carnuficem laetatur te in Carnuficina sua venisse
+navtitle: Maître Carnufex en saigne — Accueil
+---
+
+<article id="accueil">
+  <p>Une partie des contenus publiés ici sont des cours et articles que j’avais autrefois publiés sur <a href="https://zestedesavoir.com/">Zeste de Savoir</a>, avant que je décide de quitter le site. Cependant, cela ne s’arrête pas là, car je compte y publier de nouveaux contenus, et même accueillir des contenus d’autres auteurs s’ils le souhaitent. Mais sans plus attendre, la liste de ce que vous pourrez trouver à lire.</p>
+  <p>Et n’hésitez pas à aller voir le projet-frère de ce site : <a href="https://dominuscarnufex.github.io/rust-libevdev/">Rust libevdev</a> !</p>
+
+{% for article in site.articles reversed %}
+  <section class="article-accueil">
+    <a href="{{ article.baseurl }}">
+      <img src="{{ article.baseurl }}/images/logo.png">
+      <div>
+        <p class="titre">{{ article.title }}</p>
+        <p class="sous-titre">{{ article.subtitle }}</p>
+        <p class="metadonnees">Publié par {{ article.auteur }} le {{ article.pubdate }}</p>
+      </div>
+    </a>
+  </section>
+{% endfor %}
+
+  <h1 id="mentions-legales">Mentions légales</h1>
+  <ul class="simple">
+  <li>Les textes du site sont diffusés sous licence indiquée en haut de chaque page.</li>
+  <li>Le thème du site est largement inspiré du thème «&nbsp;Hack&nbsp;» de GitHub Pages.</li>
+  <li>Le thème de coloration syntaxique est un clone du thème «&nbsp;Cobalt&nbsp;» de GtkSourceView, adapté à un fond noir.</li>
+  <li>Les icônes des boites spéciales — comme le bloc «&nbsp;Important&nbsp;» ci-dessus — sont piquées à <a class="reference external" href="https://zestedesavoir.com/">Zeste de Savoir</a>.</li>
+  </ul>
+  <p>Pour me contacter si vous n’avez pas de compte GitHub ou si vous ne souhaitez pas l’utiliser, vous pouvez m’écrire à l’adresse <code>dοmіnuѕ.саrnufеx@tеlаdіаі.rе</code>. Attention ! Ne faites pas de copier-coller : j’utilise une <a class="reference external" href="http://altf4.teladiai.re/index.php?post/23">technique de fourbe</a> pour tromper les robots, et l’adresse ne fonctionnera pas si vous ne la tapez pas vous-même.</p>
+</article>

@@ -1,0 +1,6 @@
+name: Maître Carnufex en saigne
+baseurl: "https://dominuscarnufex.github.io/cours"
+
+collections:
+  articles:
+    output: true

@@ -1,0 +1,542 @@
+/* BODY */
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #151515 url("https://github.com/themes/hacker/images/bkg.png") 0 0;
+  color: #eaeaea;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* NAVIGATION BARS */
+
+#top {
+  width: 90%;
+  max-width: 960px;
+  margin: auto;
+  text-align: right;
+}
+
+#top ul {
+  font-family: "DejaVu Sans", "Bitstream Vera Sans", "Lucida Sans", sans-serif;
+  padding: 0px;
+  font-weight: bold;
+}
+
+#top ul li {
+  display: inline;
+  margin-right: 20px;
+}
+
+#side {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 5%;
+  width: 20%;
+  padding-left: 10px;
+  display: inline-block;
+  vertical-align: top;
+  text-align: left;
+}
+
+@media screen and ( max-width: 1050px ) {
+  #side {
+    font-size: 80%;
+  }
+  
+  #side p {
+    text-indent: 0px;
+  }
+}
+
+@media screen and ( max-width: 700px ) {
+  #side {
+    display: none;
+  }
+}
+
+#bottom {
+  display: none;
+  width: 90%;
+  margin: 15px auto 0 auto;
+  border-top: 2px dashed yellowgreen;
+  text-align: left;
+}
+
+@media screen and ( max-width: 700px ) {
+  #bottom {
+    display: block;
+  }
+}
+
+#titre-sommaire, #titre-telechargements {
+  color: yellowgreen;
+}
+
+/* HEADER */
+
+header {
+  background: rgba(0, 0, 0, 0.1);
+  width: 100%;
+  border-bottom: 1px dashed yellowgreen;
+  padding: 20px 0;
+  margin: 0 0 40px 0;
+}
+
+header h1 {
+  font-size: 30px;
+  line-height: 1.5;
+  margin: 0 0 0 -40px;
+  /*font-family: "DejaVu Sans", "Bitstream Vera Sans", "Lucida Sans", sans-serif;*/
+  color: yellowgreen;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1),
+               0 0 5px rgba(181, 232, 83, 0.1),
+               0 0 10px rgba(181, 232, 83, 0.1);
+  letter-spacing: -1px;
+  /*text-align: center;*/
+}
+
+header h2 {
+  font-size: 18px;
+  font-weight: 300;
+  color: #666;
+}
+
+header #auteur {
+  margin-top: -15px;
+  margin-left: -10%;
+  color: gray;
+  font-size: 80%;
+}
+
+#header-insides {
+  width: 90%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+@media screen and ( max-width: 860px ) {
+  #header-insides {
+    width: 80%;
+    margin: 0 5% 0 15%;
+  }
+}
+
+/* MAIN CONTENT */
+
+main {
+  text-align: justify;
+}
+
+article {
+  display: inline-block;
+  width: 90%;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+@media screen and ( max-width: 1600px ) {
+  article {
+    width: 75%;
+  }
+}
+
+@media screen and ( max-width: 700px ) {
+  article {
+    display: block;
+    width: 90%;
+    margin: 0 auto;
+  }
+}
+
+article#accueil {
+  display: block;
+  width: 90%;
+  margin: 0 auto;
+}
+
+article #sommaire {
+  width: 90%;
+  margin: auto;
+  margin-bottom: 30px;
+  padding-left: 2%;
+  padding-right: 2%;
+  border-bottom: 1px dashed yellowgreen;
+  border-top: 1px dashed yellowgreen;
+}
+
+article #sommaire .first {
+  color: yellowgreen;
+  font-weight: bold;
+}
+
+/* PAGE D’ACCUEIL */
+
+.article-accueil {
+  border: 2px dotted #666;
+  background-color: #111;
+  line-height: 1;
+  margin-bottom: 10px;
+  height: 96px;
+}
+
+.article-accueil a {
+  color: none;
+  text-shadow: none;
+}
+
+.article-accueil a:hover {
+  text-decoration: none;
+}
+
+.article-accueil img {
+    height: 96px;
+}
+
+.article-accueil div {
+  margin-top: -96px;
+  margin-left: 96px;
+  padding: 10px;
+  line-height: 1.5;
+  height: 76px;
+}
+
+.article-accueil p {
+  margin: 0px;
+  text-indent: 0px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 20px;
+}
+
+.article-accueil .titre {
+  font-size: 1.4rem;
+  color: yellowgreen;
+}
+
+.article-accueil .sous-titre {
+  padding-left: 2em;
+  color: grey;
+  padding-bottom: 20px; 
+}
+
+.article-accueil .metadonnees {
+  font-size: 80%;
+  color: lightgrey;
+}
+
+/* TEXT HEADERS */
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0 0 20px;
+  font-weight: normal;
+  font-family: "DejaVu Sans", "Bitstream Vera Sans", "Lucida Sans", sans-serif;
+  color: yellowgreen;
+  letter-spacing: -0.03em;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1),
+               0 0 5px rgba(181, 232, 83, 0.1),
+               0 0 10px rgba(181, 232, 83, 0.1);
+}
+
+h1 {
+  font-size: 30px;
+}
+
+h1.page-de-sommaire {
+    font-size: 1.4rem;
+    line-height: 2rem;
+    padding: 0.4rem;
+    border-bottom: 2px dotted;
+}
+
+h1.page-de-sommaire a {
+    color: inherit;
+    text-shadow: none;
+}
+
+h2 {
+  font-size: 24px;
+}
+
+h3 {
+  font-size: 18px;
+}
+
+h4 {
+  font-size: 14px;
+}
+
+h5 {
+  font-size: 12px;
+  text-transform: uppercase;
+  margin: 0 0 5px 0;
+}
+
+h6 {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #999;
+  margin: 0 0 5px 0;
+}
+
+/* BLOCK ELEMENTS */
+
+p {
+  text-indent: 50px;
+}
+
+figure {
+  margin: 16px 0;
+  font-size: 90%;
+  color: #d2d2d2;
+}
+
+figure.align-center {
+  text-align: center;
+}
+
+figure img {
+    max-width: 100%;
+}
+
+blockquote {
+  color: #aaa;
+  padding-left: 10px;
+  border-left: 1px dotted #666;
+}
+
+blockquote p {
+  text-indent: 0px;
+}
+
+hr {
+  height: 0;
+  width: 90%;
+  border: 0;
+  border-bottom: 1px dashed yellowgreen;
+  color: yellowgreen;
+}
+
+pre {
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 10px;
+  font-size: 14px;
+  border-radius: 2px;
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  text-wrap: normal;
+  overflow: auto;
+  overflow-y: hidden;
+}
+
+table {
+  margin: 0 auto 20px auto;
+  border: none;
+}
+
+table.footnote {
+  width: 100%;
+  font-size: 90%;
+  color: #d2d2d2;
+  margin: 0;
+}
+
+th {
+  text-align: center;
+  border: none;
+  border-bottom: 1px dashed yellowgreen;
+  padding: 5px 10px;
+}
+
+td {
+  border: none;
+  padding: 5px 5px;
+}
+
+.center {
+  text-align: center;
+  text-indent: 0px;
+}
+
+/* INLINE ELEMENTS */
+
+a {
+  color: #63c0f5;
+  text-shadow: 0 0 5px rgba(104, 182, 255, 0.5);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+code {
+  font-family: "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Lucida Console", monospace;
+  line-height: 1.5;
+  color: yellow;
+}
+
+dt {
+  font-style: italic;
+  font-weight: bold;
+}
+
+ul li {
+  line-height: 1.4;
+  list-style: none;
+  margin-bottom: 0.5rem;
+}
+
+#sommaire li {
+ margin-bottom: 0px; 
+}
+
+#telechargements li {
+ margin-bottom: 0px; 
+}
+
+body :not(#top) ul li:before {
+  content: ">>";
+  font-family: "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Lucida Console", monospace;
+  font-size: 13px;
+  color: yellowgreen;
+  margin-left: -37px;
+  margin-right: 21px;
+  line-height: 16px;
+}
+
+/* CUSTOM BLOCKS */
+
+aside p {
+  text-indent: 0px;
+}
+
+aside.error, aside.important, aside.note, aside.question {
+  margin: 25px 0;
+  padding: 7px 15px 7px 45px;
+  position: relative;
+}
+
+aside.error {
+  background: #800000;
+}
+
+aside.important {
+  background: #661900;
+}
+
+aside.note {
+  background: #1c3458;
+}
+
+aside.question {
+  background: #3d305c;
+}
+
+aside.error:before, aside.important:before, aside.note:before, aside.question:before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 23px;
+  margin: -11px 0 0 -11px;
+  height: 22px;
+  width: 22px;
+  background-repeat: no-repeat;
+}
+
+aside.error:before {
+  background-image: url("/rust-libevdev/static/error.png");
+}
+
+aside.important:before {
+  background-image: url("/rust-libevdev/static/important.png");
+}
+
+aside.note:before {
+  background-image: url("/rust-libevdev/static/note.png");
+}
+
+aside.question:before {
+  background-image: url("/rust-libevdev/static/question.png");
+}
+
+/* CODE HIGHLIGHTING */
+
+.code .ajout {
+  color: mediumvioletred;
+}
+
+.code .comment {
+  color: dodgerblue;
+  font-style: italic;
+}
+
+.code .generic {
+  color: cadetblue;
+}
+
+.code .keyword {
+  color: darkorange;
+  font-weight: bold;
+}
+
+.code .keyword.type {
+  color: springgreen;
+  font-weight: normal;
+}
+
+.code .name {
+  color: beige;
+}
+
+.code .number {
+  color: cyan;
+}
+
+.code .operator {
+  color: darkkhaki;
+}
+
+.code .preproc {
+  color: lightgray;
+  font-style: normal;
+}
+
+.code .preprocfile {
+  color: limegreen;
+  font-style: normal;
+}
+
+.code .punctuation {
+  color: darkkhaki;
+}
+
+.code .string {
+  color: limegreen;
+}
+
+.code .string.char {
+  color: khaki;
+}
+
+.code .string.escape {
+  color: lightgrey;
+}
+
+/* FOOTER */
+
+footer {
+  width: 100%;
+  margin-top: 40px;
+  padding-top: 3px;
+  border-top: 1px dashed yellowgreen;
+  text-align: center;
+}
+
+footer a {
+  color: gray;
+}
