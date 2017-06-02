@@ -1,0 +1,7 @@
+---
+baseurl: rs-kernel
+title: Réécrire le noyau Linux en Rust ?
+subtitle: Oui c’est possible…
+auteur: Dominus Carnufex
+pubdate: 2 juin 2017
+---
